@@ -1,3 +1,5 @@
+# sshcon
+
 spawn throwaway systemd or non-systemd based docker containers using ssh.
 
 ```
@@ -28,7 +30,8 @@ ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 
 # Notes:
 
-* No authentication implemented, you should not run this on a public
+* No authentication implemented, you should not run this on a public network
+  interface.
 * Container images not available on the host will be pulled.
 * Container is removed after exiting the session.
 
