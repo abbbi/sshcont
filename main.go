@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -22,10 +21,6 @@ import (
 
 func main() {
 	ssh.Handle(func(sess ssh.Session) {
-		j, je := json.Marshal(sess)
-		if je == nil {
-			fmt.Println(string(j))
-		}
 		_, _, isTty := sess.Pty()
 		cfg := &container.Config{
 			Image:        sess.User(),
