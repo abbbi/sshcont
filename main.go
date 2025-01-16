@@ -48,6 +48,7 @@ func main() {
 	flag.Parse()
 
 	ssh.Handle(func(sess ssh.Session) {
+		InfoPrint("Connection from: [%s]", sess.RemoteAddr())
 		_, _, isTty := sess.Pty()
 		cfg := &container.Config{
 			Image:        sess.User(),
