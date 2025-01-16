@@ -33,3 +33,8 @@ ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 
 * Container images not available on the host will be pulled.
 * Container is removed after exiting the session.
+
+# Why?
+
+I know [containerssh](https://github.com/containerssh) exists, but it brings
+way too much features i dont need.
