@@ -67,16 +67,7 @@ func main() {
 	log.Fatal(ssh.ListenAndServe(":2222", nil))
 }
 
-func imageExistsLocally(imageName string) bool {
-	ctx := context.Background()
-
-	// Create a Docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		log.Fatalf("Error creating Docker client: %v", err)
-	}
-
-	// List images with filters
+func imageExistsLocally(ctx context.Context, imageName string, cli *client.Client) bool {
 	images, err := cli.ImageList(ctx, image.ListOptions{})
 	if err != nil {
 		log.Fatalf("Error listing images: %v", err)
@@ -142,7 +133,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		Architecture: "amd64",
 		// Variant:      "minimal",
 	}
-	if imageExistsLocally(cImage) != true {
+	if imageExistsLocally(ctx, cImage, docker) != true {
 		sess.Write([]byte("Fetching Image from repository .."))
 		reader, pullerr := docker.ImagePull(ctx, cImage, image.PullOptions{})
 		if pullerr != nil {
@@ -178,7 +169,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		log.Fatal("Container failed to become ready:", err)
 	}
 	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
-		Cmd:          []string{"/bin/bash"},
+		Cmd:          []string{"/bin/sh"},
 		Tty:          true,
 		AttachStdin:  true,
 		AttachStdout: true,
