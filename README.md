@@ -1,4 +1,4 @@
-# sshcon
+# sshcont
 
 spawn throwaway systemd or non-systemd based docker containers using ssh.
 
