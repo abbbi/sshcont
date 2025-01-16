@@ -1,5 +1,7 @@
-spawn throwaway systemd or non-systemd based containers using
-ssh.
+spawn throwaway systemd or non-systemd based docker containers using ssh.
+
+`Note:` No authentication implemented, you should not run this on a public
+accessible network.
 
 ```
  go run .
