@@ -143,7 +143,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		// Variant:      "minimal",
 	}
 	if imageExistsLocally(ctx, cImage, docker) != true {
-		sess.Write([]byte("Fetching Image from repository ..\n"))
+		sess.Write([]byte("Image [" + cImage + "] not found, attempting to fetch from repository ..\n"))
 		reader, pullerr := docker.ImagePull(ctx, cImage, image.PullOptions{})
 		if pullerr != nil {
 			sess.Write([]byte("Unable to pull requested image [" + cImage + "]: [" + string(pullerr.Error()) + "]\n"))
