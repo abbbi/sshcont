@@ -7,9 +7,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -36,7 +38,23 @@ func main() {
 			AttachStdout: true,
 			StdinOnce:    true,
 		}
-		status, cleanup, err := dockerRun(cfg, sess)
+		hostcfg := &container.HostConfig{
+			Tmpfs: map[string]string{
+				"/tmp":      "rw,noexec,nosuid",
+				"/run":      "rw,noexec,nosuid",
+				"/run/lock": "rw,noexec,nosuid",
+			},
+			Mounts: []mount.Mount{
+				{
+					Type:   mount.TypeBind,
+					Source: "/sys/fs/cgroup",
+					Target: "/sys/fs/cgroup",
+				},
+			},
+			CapAdd:       []string{"SYS_ADMIN"},
+			CgroupnsMode: "host",
+		}
+		status, cleanup, err := dockerRun(cfg, hostcfg, sess)
 		defer cleanup()
 		if err != nil {
 			fmt.Fprintln(sess, err)
@@ -75,7 +93,38 @@ func imageExistsLocally(imageName string) bool {
 	return false
 }
 
-func dockerRun(cfg *container.Config, sess ssh.Session) (status int64, cleanup func(), err error) {
+func waitForContainerReady(ctx context.Context, cli *client.Client, containerID string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		containerJSON, err := cli.ContainerInspect(ctx, containerID)
+		if err != nil {
+			return fmt.Errorf("error inspecting container: %w", err)
+		}
+
+		// Check if the container is running
+		if containerJSON.State.Running {
+			// If a health check is defined, ensure it's healthy
+			if containerJSON.State.Health != nil {
+				if containerJSON.State.Health.Status == "healthy" {
+					fmt.Println("Container is running and healthy.")
+					return nil
+				} else if containerJSON.State.Health.Status == "unhealthy" {
+					return fmt.Errorf("container is unhealthy")
+				}
+			} else {
+				fmt.Println("Container is running.")
+				return nil
+			}
+		}
+
+		fmt.Println("Waiting for container to be ready...")
+		time.Sleep(2 * time.Second)
+	}
+
+	return fmt.Errorf("timeout waiting for container to be ready")
+}
+func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Session) (status int64, cleanup func(), err error) {
 	docker, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		panic(err)
@@ -87,7 +136,6 @@ func dockerRun(cfg *container.Config, sess ssh.Session) (status int64, cleanup f
 	log.Printf("User: %s", sess.User())
 	cImage := sess.User()
 
-	hostConfig := container.HostConfig{}
 	networkingConfig := network.NetworkingConfig{}
 	platformConfig := v1.Platform{
 		OS:           "linux",
@@ -107,30 +155,42 @@ func dockerRun(cfg *container.Config, sess ssh.Session) (status int64, cleanup f
 		if _, err := io.Copy(os.Stdout, reader); err != nil {
 			log.Printf("Error reading pull output: %v", pullerr)
 		}
-
 	}
 
-	res, err := docker.ContainerCreate(ctx, cfg, &hostConfig, &networkingConfig, &platformConfig, "")
+	resp, err := docker.ContainerCreate(ctx, cfg, hostcfg, &networkingConfig, &platformConfig, "")
+	if err != nil {
+		log.Printf("Unable to create container: %v", err)
+		return
+	}
+	log.Printf("Created container: %s", resp.ID)
+	cleanup = func() {
+		docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+	}
+	startErr := docker.ContainerStart(ctx, resp.ID, container.StartOptions{})
+	if startErr != nil {
+		log.Printf("Unable to start container: %v", err)
+		sess.Write([]byte("Unable to pull requested image" + string(startErr.Error()) + "\n"))
+		return
+	}
+	log.Printf("Wait for container %s to be ready", resp.ID)
+	err = waitForContainerReady(ctx, docker, resp.ID, 30*time.Second)
+	if err != nil {
+		log.Fatal("Container failed to become ready:", err)
+	}
+	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
+		Cmd:          []string{"/bin/bash"},
+		Tty:          true,
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+	})
 	if err != nil {
 		return
 	}
-	cleanup = func() {
-		docker.ContainerRemove(ctx, res.ID, container.RemoveOptions{})
-	}
-	opts := container.AttachOptions{
-		Stdin:  cfg.AttachStdin,
-		Stdout: cfg.AttachStdout,
-		Stderr: cfg.AttachStderr,
-		Stream: true,
-	}
-	stream, err := docker.ContainerAttach(ctx, res.ID, opts)
-	if err != nil {
-		return
-	}
-	cleanup = func() {
-		docker.ContainerRemove(ctx, res.ID, container.RemoveOptions{})
-		stream.Close()
-	}
+	log.Printf("Attaching container: %s", resp.ID)
+	stream, err := docker.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{
+		Tty: true,
+	})
 
 	outputErr := make(chan error)
 
@@ -149,15 +209,11 @@ func dockerRun(cfg *container.Config, sess ssh.Session) (status int64, cleanup f
 		io.Copy(stream.Conn, sess)
 	}()
 
-	err = docker.ContainerStart(ctx, res.ID, container.StartOptions{})
-	if err != nil {
-		return
-	}
 	if cfg.Tty {
 		_, winCh, _ := sess.Pty()
 		go func() {
 			for win := range winCh {
-				err := docker.ContainerResize(ctx, res.ID, container.ResizeOptions{
+				err := docker.ContainerResize(ctx, resp.ID, container.ResizeOptions{
 					Height: uint(win.Height),
 					Width:  uint(win.Width),
 				})
@@ -168,13 +224,15 @@ func dockerRun(cfg *container.Config, sess ssh.Session) (status int64, cleanup f
 			}
 		}()
 	}
-	resultC, errC := docker.ContainerWait(ctx, res.ID, container.WaitConditionNotRunning)
 	select {
-	case err = <-errC:
+	case <-outputErr:
+		cleanup = func() {
+			log.Printf("Killing container: %s", resp.ID)
+			docker.ContainerKill(ctx, resp.ID, "9")
+			log.Printf("Removing container: %s", resp.ID)
+			docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+		}
+		fmt.Println("Exit..")
 		return
-	case result := <-resultC:
-		status = result.StatusCode
 	}
-	err = <-outputErr
-	return
 }
