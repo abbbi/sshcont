@@ -1,3 +1,19 @@
+/*
+	Copyright (C) 2025  Michael Ablassmeier <abi@grinser.de>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 package main
 
 import (
@@ -27,7 +43,7 @@ var (
 )
 
 func main() {
-
+	InfoPrint("%s: %s %s %s ", os.Args[0], version, commit, date)
 	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
 	flag.Parse()
 
@@ -133,14 +149,13 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	cleanup = func() {}
 	ctx := context.Background()
 
-	InfoPrint("Image: %s", sess.User())
 	cImage := sess.User()
+	InfoPrint("Image: %s", cImage)
 
 	networkingConfig := network.NetworkingConfig{}
 	platformConfig := v1.Platform{
 		OS:           "linux",
 		Architecture: "amd64",
-		// Variant:      "minimal",
 	}
 	if imageExistsLocally(ctx, cImage, docker) != true {
 		sess.Write([]byte("Image [" + cImage + "] not found, attempting to fetch from repository ..\n"))
