@@ -1,4 +1,4 @@
-spawn throwaway sytemd based or non-systemd based containers using
+spawn throwaway systemd or non-systemd based containers using
 ssh.
 
 ```
