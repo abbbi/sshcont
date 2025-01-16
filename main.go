@@ -99,18 +99,18 @@ func waitForContainerReady(ctx context.Context, cli *client.Client, containerID 
 			// If a health check is defined, ensure it's healthy
 			if containerJSON.State.Health != nil {
 				if containerJSON.State.Health.Status == "healthy" {
-					fmt.Println("Container is running and healthy.")
+					log.Println("Container is running and healthy.")
 					return nil
 				} else if containerJSON.State.Health.Status == "unhealthy" {
 					return fmt.Errorf("container is unhealthy")
 				}
 			} else {
-				fmt.Println("Container is running.")
+				log.Println("Container is running.")
 				return nil
 			}
 		}
 
-		fmt.Println("Waiting for container to be ready...")
+		log.Println("Waiting for container to be ready...")
 		time.Sleep(2 * time.Second)
 	}
 
@@ -167,7 +167,9 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	log.Printf("Wait for container %s to be ready", resp.ID)
 	err = waitForContainerReady(ctx, docker, resp.ID, 30*time.Second)
 	if err != nil {
-		log.Fatal("Container failed to become ready:", err)
+		sess.Write([]byte("container failed to become ready"))
+		log.Print("Container failed to become ready:", err)
+		return
 	}
 	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
 		Cmd:          []string{"/bin/sh"},
@@ -224,7 +226,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 			log.Printf("Removing container: %s", resp.ID)
 			docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
 		}
-		fmt.Println("Exit..")
+		log.Println("Exit..")
 		return
 	}
 }
