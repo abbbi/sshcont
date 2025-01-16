@@ -7,7 +7,7 @@ accessible network.
  go run .
 ```
 
-and then:
+use the following ssh command to start and enter an container:
 
 ```
  ssh -l "jrei/systemd-debian" -o StrictHostKeychecking=no localhost -p 2222
@@ -28,3 +28,8 @@ regular:
 ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222
 ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 ```
+
+# Notes:
+
+* Container images not available on the host will be pulled.
+* Container is removed after exiting the session.
