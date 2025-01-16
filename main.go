@@ -168,7 +168,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	}
 	startErr := docker.ContainerStart(ctx, resp.ID, container.StartOptions{})
 	if startErr != nil {
-		ErrorPrint("Unable to start container: %v", err)
+		ErrorPrint("Unable to start container: %s", startErr)
 		sess.Write([]byte("Unable to pull requested image" + string(startErr.Error()) + "\n"))
 		return
 	}
@@ -180,22 +180,26 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		return
 	}
 	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
-		Cmd:          []string{"/bin/sh"},
+		Cmd:          []string{"/bin/sh", "-c", "/bin/bash || /bin/sh"},
 		Tty:          true,
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
 	})
 	if err != nil {
+		ErrorPrint("Error creating container exec: [%s]", err.Error())
 		return
 	}
 	InfoPrint("Attaching container: %s", resp.ID)
 	stream, err := docker.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{
 		Tty: true,
 	})
+	if err != nil {
+		ErrorPrint("Error during container attach: [%v]", err.Error())
+		return
+	}
 
 	outputErr := make(chan error)
-
 	go func() {
 		var err error
 		if cfg.Tty {
