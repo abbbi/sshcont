@@ -48,6 +48,7 @@ func main() {
 			},
 			CapAdd:       []string{"SYS_ADMIN"},
 			CgroupnsMode: "host",
+			SecurityOpt:  []string{"apparmor=unconfined"},
 		}
 		status, cleanup, err := dockerRun(cfg, hostcfg, sess)
 		defer cleanup()

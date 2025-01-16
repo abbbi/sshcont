@@ -15,7 +15,10 @@ and then:
 or likewise:
 
 ```
+RHEL:
  ssh -l "registry.access.redhat.com/ubi9/ubi-init:latest" -o StrictHostKeychecking=no localhost -p 2222
+SLES:
+ ssh -l "registry.suse.com/bci/bci-init:15.6" -o StrictHostKeychecking=no localhost -p 2222
 ```
 
 regular:
