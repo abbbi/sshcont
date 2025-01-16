@@ -49,6 +49,13 @@ func main() {
 
 	ssh.Handle(func(sess ssh.Session) {
 		InfoPrint("Connection from: [%s]", sess.RemoteAddr())
+
+		if sess.RawCommand() != "" {
+			sess.Write([]byte("Executing single commands not supported\n"))
+			sess.Close()
+			return
+		}
+
 		_, _, isTty := sess.Pty()
 		cfg := &container.Config{
 			Image:        sess.User(),
