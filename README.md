@@ -1,4 +1,4 @@
-spawn shoft lived sytemd based or non-systemd based containers using
+spawn throwaway sytemd based or non-systemd based containers using
 ssh.
 
 ```
