@@ -1,8 +1,5 @@
 spawn throwaway systemd or non-systemd based docker containers using ssh.
 
-`Note:` No authentication implemented, you should not run this on a public
-accessible network.
-
 ```
  go run .
 ```
@@ -31,10 +28,13 @@ ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 
 # Notes:
 
+* No authentication implemented, you should not run this on a public
 * Container images not available on the host will be pulled.
 * Container is removed after exiting the session.
 
 # Why?
 
-I know [containerssh](https://github.com/containerssh) exists, but it brings
-way too much features i dont need.
+* I know [containerssh](https://github.com/containerssh) exists, but it brings
+  way too much features i dont need.
+* Sometimes i work on systems where docker is not available but need quick
+  access to an container for testing.
