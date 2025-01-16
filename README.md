@@ -2,11 +2,21 @@
 
 spawn throwaway systemd or non-systemd based docker containers using ssh.
 
+# Usage:
+
 ```
- go run .
+sshcont:
+  -bind string
+        bind address, 127.0.0.1:2222, use :2222 for all (default "127.0.0.1:2222")
+  -image string
+        Force image to be executed
+  -vol string
+        Share volume into container, example: /home/:/home_shared
 ```
 
-use the following ssh command to start and enter an container:
+
+after starting the service, use the following ssh command to start and enter an
+container:
 
 ```
  ssh -l "jrei/systemd-debian" -o StrictHostKeychecking=no localhost -p 2222
