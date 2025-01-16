@@ -45,6 +45,7 @@ var (
 func main() {
 	InfoPrint("%s: %s %s %s ", os.Args[0], version, commit, date)
 	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
+	vol := flag.String("vol", "", "Share volume into container, example: /home/:/home_shared")
 	flag.Parse()
 
 	ssh.Handle(func(sess ssh.Session) {
@@ -69,7 +70,12 @@ func main() {
 			AttachStdout: true,
 			StdinOnce:    true,
 		}
+		shares := []string{}
+		if *vol != "" {
+			shares = append(shares, *vol)
+		}
 		hostcfg := &container.HostConfig{
+			Binds: shares,
 			Tmpfs: map[string]string{
 				"/tmp":      "rw,noexec,nosuid",
 				"/run":      "rw,noexec,nosuid",
