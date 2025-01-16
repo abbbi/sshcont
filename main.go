@@ -141,7 +141,7 @@ func waitForContainerReady(ctx context.Context, sess ssh.Session, cli *client.Cl
 	return fmt.Errorf("timeout waiting for container to be ready")
 }
 func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Session) (status int64, cleanup func(), err error) {
-	docker, err := client.NewClientWithOpts(client.FromEnv)
+	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
 	}

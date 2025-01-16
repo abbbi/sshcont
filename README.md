@@ -2,7 +2,6 @@ spawn throwaway systemd or non-systemd based containers using
 ssh.
 
 ```
- export DOCKER_API_VERSION=1.45
  go run .
 ```
 
