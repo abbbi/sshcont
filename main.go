@@ -251,7 +251,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 			InfoPrint("Killing container: %s", resp.ID)
 			docker.ContainerKill(ctx, resp.ID, "9")
 			InfoPrint("Removing container: %s", resp.ID)
-			docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+			docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
 		}
 		return
 	}
