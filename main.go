@@ -65,19 +65,19 @@ func main() {
 		defer cleanup()
 		if err != nil {
 			fmt.Fprintln(sess, err)
-			log.Println(err)
+			ErrorPrint(err.Error())
 		}
 		sess.Exit(int(status))
 	})
 
-	log.Printf("starting ssh server on %s...", *bindAddress)
+	InfoPrint("starting ssh server on %s...", *bindAddress)
 	log.Fatal(ssh.ListenAndServe(*bindAddress, nil))
 }
 
 func imageExistsLocally(ctx context.Context, imageName string, cli *client.Client) bool {
 	images, err := cli.ImageList(ctx, image.ListOptions{})
 	if err != nil {
-		log.Printf("Error listing images: %v", err)
+		ErrorPrint("Error listing images: %v", err)
 		return false
 	}
 
@@ -106,19 +106,19 @@ func waitForContainerReady(ctx context.Context, sess ssh.Session, cli *client.Cl
 			// If a health check is defined, ensure it's healthy
 			if containerJSON.State.Health != nil {
 				if containerJSON.State.Health.Status == "healthy" {
-					log.Println("Container is running and healthy.")
+					InfoPrint("Container %s is running and healthy.", containerID)
 					return nil
 				} else if containerJSON.State.Health.Status == "unhealthy" {
 					return fmt.Errorf("container is unhealthy")
 				}
 			} else {
-				log.Println("Container is running.")
+				InfoPrint("Container %s is running.", containerID)
 				return nil
 			}
 		}
 
 		sess.Write([]byte("Waiting for container to become ready...\n"))
-		log.Printf("Waiting for container %s to be ready...", containerID)
+		InfoPrint("Waiting for container %s to be ready...", containerID)
 		time.Sleep(2 * time.Second)
 	}
 
@@ -133,7 +133,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	cleanup = func() {}
 	ctx := context.Background()
 
-	log.Printf("User: %s", sess.User())
+	InfoPrint("Image: %s", sess.User())
 	cImage := sess.User()
 
 	networkingConfig := network.NetworkingConfig{}
@@ -143,36 +143,36 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		// Variant:      "minimal",
 	}
 	if imageExistsLocally(ctx, cImage, docker) != true {
-		sess.Write([]byte("Fetching Image from repository .."))
+		sess.Write([]byte("Fetching Image from repository ..\n"))
 		reader, pullerr := docker.ImagePull(ctx, cImage, image.PullOptions{})
 		if pullerr != nil {
-			sess.Write([]byte("Unable to pull requested image" + string(pullerr.Error()) + "\n"))
-			log.Printf("Error pulling image: %v", pullerr)
+			sess.Write([]byte("Unable to pull requested image [" + cImage + "]: [" + string(pullerr.Error()) + "]\n"))
+			ErrorPrint("Unable to pull requested image [%s]: %v", cImage, pullerr)
 			cleanup = func() {}
 			return
 		}
 		defer reader.Close()
 		if _, err := io.Copy(os.Stdout, reader); err != nil {
-			log.Printf("Error reading pull output: %v", pullerr)
+			ErrorPrint("Unable to read pull output: %v", pullerr)
 		}
 	}
 
 	resp, err := docker.ContainerCreate(ctx, cfg, hostcfg, &networkingConfig, &platformConfig, "")
 	if err != nil {
-		log.Printf("Unable to create container: %v", err)
+		ErrorPrint("Unable to create container: %v", err)
 		return
 	}
-	log.Printf("Created container: %s", resp.ID)
+	InfoPrint("Created container: %s", resp.ID)
 	cleanup = func() {
 		docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
 	}
 	startErr := docker.ContainerStart(ctx, resp.ID, container.StartOptions{})
 	if startErr != nil {
-		log.Printf("Unable to start container: %v", err)
+		ErrorPrint("Unable to start container: %v", err)
 		sess.Write([]byte("Unable to pull requested image" + string(startErr.Error()) + "\n"))
 		return
 	}
-	log.Printf("Wait for container %s to be ready", resp.ID)
+	InfoPrint("Wait for container %s to be ready", resp.ID)
 	err = waitForContainerReady(ctx, sess, docker, resp.ID, 30*time.Second)
 	if err != nil {
 		sess.Write([]byte("container failed to become ready"))
@@ -189,7 +189,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	if err != nil {
 		return
 	}
-	log.Printf("Attaching container: %s", resp.ID)
+	InfoPrint("Attaching container: %s", resp.ID)
 	stream, err := docker.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{
 		Tty: true,
 	})
@@ -220,7 +220,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 					Width:  uint(win.Width),
 				})
 				if err != nil {
-					log.Println(err)
+					ErrorPrint(err.Error())
 					break
 				}
 			}
@@ -229,12 +229,11 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	select {
 	case <-outputErr:
 		cleanup = func() {
-			log.Printf("Killing container: %s", resp.ID)
+			InfoPrint("Killing container: %s", resp.ID)
 			docker.ContainerKill(ctx, resp.ID, "9")
-			log.Printf("Removing container: %s", resp.ID)
+			InfoPrint("Removing container: %s", resp.ID)
 			docker.ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
 		}
-		log.Println("Exit..")
 		return
 	}
 }
