@@ -15,12 +15,12 @@ and then:
 or likewise:
 
 ```
- ssh -l "registry.access.redhat.com/ubi9/ubi-init" -o StrictHostKeychecking=no localhost -p 2222
+ ssh -l "registry.access.redhat.com/ubi9/ubi-init:latest" -o StrictHostKeychecking=no localhost -p 2222
 ```
 
 regular:
 
 ```
 ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222
+ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 ```
-

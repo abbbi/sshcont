@@ -70,7 +70,8 @@ func main() {
 func imageExistsLocally(ctx context.Context, imageName string, cli *client.Client) bool {
 	images, err := cli.ImageList(ctx, image.ListOptions{})
 	if err != nil {
-		log.Fatalf("Error listing images: %v", err)
+		log.Printf("Error listing images: %v", err)
+		return false
 	}
 
 	// Check if the image exists locally
