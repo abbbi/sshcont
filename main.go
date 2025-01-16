@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -19,7 +20,17 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
+
+	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
+	flag.Parse()
+
 	ssh.Handle(func(sess ssh.Session) {
 		_, _, isTty := sess.Pty()
 		cfg := &container.Config{
@@ -59,8 +70,8 @@ func main() {
 		sess.Exit(int(status))
 	})
 
-	log.Println("starting ssh server on port 2222...")
-	log.Fatal(ssh.ListenAndServe(":2222", nil))
+	log.Printf("starting ssh server on %s...", *bindAddress)
+	log.Fatal(ssh.ListenAndServe(*bindAddress, nil))
 }
 
 func imageExistsLocally(ctx context.Context, imageName string, cli *client.Client) bool {
