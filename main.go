@@ -52,6 +52,7 @@ func main() {
 
 		if sess.RawCommand() != "" {
 			sess.Write([]byte("Executing single commands not supported\n"))
+			ErrorPrint("Exiting: command specified")
 			sess.Close()
 			return
 		}
