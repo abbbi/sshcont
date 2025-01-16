@@ -81,7 +81,7 @@ func imageExistsLocally(ctx context.Context, imageName string, cli *client.Clien
 	return false
 }
 
-func waitForContainerReady(ctx context.Context, cli *client.Client, containerID string, timeout time.Duration) error {
+func waitForContainerReady(ctx context.Context, sess ssh.Session, cli *client.Client, containerID string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
@@ -106,7 +106,8 @@ func waitForContainerReady(ctx context.Context, cli *client.Client, containerID 
 			}
 		}
 
-		log.Println("Waiting for container to be ready...")
+		sess.Write([]byte("Waiting for container to become ready...\n"))
+		log.Printf("Waiting for container %s to be ready...", containerID)
 		time.Sleep(2 * time.Second)
 	}
 
@@ -161,7 +162,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		return
 	}
 	log.Printf("Wait for container %s to be ready", resp.ID)
-	err = waitForContainerReady(ctx, docker, resp.ID, 30*time.Second)
+	err = waitForContainerReady(ctx, sess, docker, resp.ID, 30*time.Second)
 	if err != nil {
 		sess.Write([]byte("container failed to become ready"))
 		log.Print("Container failed to become ready:", err)
