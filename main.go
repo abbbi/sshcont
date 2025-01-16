@@ -46,10 +46,12 @@ func main() {
 	InfoPrint("%s: %s %s %s ", os.Args[0], version, commit, date)
 	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
 	vol := flag.String("vol", "", "Share volume into container, example: /home/:/home_shared")
+	image := flag.String("image", "", "Force image to be executed")
 	flag.Parse()
 
 	ssh.Handle(func(sess ssh.Session) {
 		InfoPrint("Connection from: [%s]", sess.RemoteAddr())
+		var defaultImage = sess.User()
 
 		if sess.RawCommand() != "" {
 			sess.Write([]byte("Executing single commands not supported\n"))
@@ -58,9 +60,14 @@ func main() {
 			return
 		}
 
+		if *image != "" {
+			InfoPrint("Overriding image with: [%s]", *image)
+			sess.Write([]byte("Overriding image with: [" + *image + "]\n"))
+			defaultImage = *image
+		}
 		_, _, isTty := sess.Pty()
 		cfg := &container.Config{
-			Image:        sess.User(),
+			Image:        defaultImage,
 			Cmd:          sess.Command(),
 			Env:          sess.Environ(),
 			Tty:          isTty,
@@ -164,7 +171,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	cleanup = func() {}
 	ctx := context.Background()
 
-	cImage := sess.User()
+	cImage := cfg.Image
 	InfoPrint("Image: %s", cImage)
 
 	networkingConfig := network.NetworkingConfig{}
