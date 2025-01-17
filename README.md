@@ -22,6 +22,7 @@ container:
 
 ```
  ssh -l "jrei/systemd-debian" -o StrictHostKeychecking=no localhost -p 2222
+ root@89fb0de78a12:/
 ```
 
 or likewise:
@@ -29,15 +30,19 @@ or likewise:
 ```
 RHEL:
  ssh -l "registry.access.redhat.com/ubi9/ubi-init:latest" -o StrictHostKeychecking=no localhost -p 2222
+ root@89fb0de78a14:/
 SLES:
  ssh -l "registry.suse.com/bci/bci-init:15.6" -o StrictHostKeychecking=no localhost -p 2222
+ root@89fb0de78a15:/
 ```
 
 regular:
 
 ```
 ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222
+ root@89fb0de78a16:/
 ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
+ root@89fb0de78a17:/
 ```
 
 # Executing scripts for CI testing
