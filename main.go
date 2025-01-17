@@ -224,7 +224,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	}
 	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
 		Cmd:          defaultCmd,
-		Tty:          false,
+		Tty:          true,
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
