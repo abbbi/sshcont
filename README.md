@@ -42,9 +42,7 @@ ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 
 # Executing scripts for CI testing
 
-Currently it is not possible to specify a command for the ssh session, but the
-`cmd` option can be used to execute an specified command within the container
-for CI testing. Example:
+Execute pre-defined scripts by using the `cmd` option:
 
 ```
  cat /tmp/ci/test.sh
@@ -57,6 +55,16 @@ for CI testing. Example:
  user@host: ~ $ echo $?
  1
 ```
+
+or execute a command via ssh call:
+
+```
+ ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222 ls; echo $?
+ bin   dev  home  lib64  mnt  proc  run   srv  tmp  var
+ boot  etc  lib   media  opt  root  sbin  sys  usr
+ 0
+```
+
 
 or execute script on multiple containers:
 

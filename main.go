@@ -63,7 +63,6 @@ func main() {
 		_, _, isTty := sess.Pty()
 		cfg := &container.Config{
 			Image:        defaultImage,
-			Cmd:          sess.Command(),
 			Env:          sess.Environ(),
 			Tty:          isTty,
 			OpenStdin:    true,
@@ -165,18 +164,18 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	status = 255
 	cleanup = func() {}
 	ctx := context.Background()
+	useTty := true
 
 	cImage := cfg.Image
 	InfoPrint("Image: %s", cImage)
 	defaultCmd := []string{"/bin/sh", "-c", "/bin/bash || /bin/sh"}
 
+	if sess.RawCommand() != "" {
+		defaultCmd = sess.Command()
+		useTty = false
+	}
 	if cmd != "" {
 		defaultCmd = strings.Fields(cmd)
-	}
-
-	if sess.RawCommand() != "" {
-		sess.Write([]byte("not implemented, use -cmd option\n"))
-		return
 	}
 	InfoPrint("Executing command: %s", defaultCmd)
 
@@ -235,7 +234,7 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 	}
 	InfoPrint("Attaching container: %s", resp.ID)
 	stream, err := docker.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{
-		Tty: true,
+		Tty: useTty,
 	})
 	if err != nil {
 		ErrorPrint("Error during container attach: [%v]", err.Error())
