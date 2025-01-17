@@ -47,7 +47,7 @@ ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
 
 # Executing scripts for CI testing
 
-Execute pre-defined scripts by using the `cmd` option:
+Execute predefined script by using the `cmd` option:
 
 ```
  cat /tmp/ci/test.sh
@@ -61,23 +61,22 @@ Execute pre-defined scripts by using the `cmd` option:
  1
 ```
 
-or execute a command via ssh call:
-
-```
- ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222 ls; echo $?
- bin   dev  home  lib64  mnt  proc  run   srv  tmp  var
- boot  etc  lib   media  opt  root  sbin  sys  usr
- 0
-```
-
-
-or execute script on multiple containers:
+on multiple containers:
 
 ```
 for dist in $(echo "debian:bookworm" "debian:buster" "debian:bullseye"
 "alpine:latest" "registry.suse.com/bci/bci-init:15.6"); do
     ssh -l "$dist" -o StrictHostKeychecking=no localhost -p 2222;
 done
+```
+
+or directly execute a command via ssh call:
+
+```
+ ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222 ls; echo $?
+ bin   dev  home  lib64  mnt  proc  run   srv  tmp  var
+ boot  etc  lib   media  opt  root  sbin  sys  usr
+ 0
 ```
 
 # Notes:
