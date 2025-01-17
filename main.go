@@ -23,6 +23,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -47,18 +48,12 @@ func main() {
 	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
 	vol := flag.String("vol", "", "Share volume into container, example: /home/:/home_shared")
 	image := flag.String("image", "", "Force image to be executed")
+	cmd := flag.String("cmd", "", "Execute cmd after login, example: ls")
 	flag.Parse()
 
 	ssh.Handle(func(sess ssh.Session) {
 		InfoPrint("Connection from: [%s]", sess.RemoteAddr())
 		var defaultImage = sess.User()
-
-		if sess.RawCommand() != "" {
-			sess.Write([]byte("Executing single commands not supported\n"))
-			ErrorPrint("Exiting: command specified")
-			sess.Close()
-			return
-		}
 
 		if *image != "" {
 			InfoPrint("Overriding image with: [%s]", *image)
@@ -99,7 +94,7 @@ func main() {
 			CgroupnsMode: "host",
 			SecurityOpt:  []string{"apparmor=unconfined"},
 		}
-		status, cleanup, err := dockerRun(cfg, hostcfg, sess)
+		status, cleanup, err := dockerRun(cfg, hostcfg, sess, *cmd)
 		defer cleanup()
 		if err != nil {
 			fmt.Fprintln(sess, err)
@@ -162,7 +157,7 @@ func waitForContainerReady(ctx context.Context, sess ssh.Session, cli *client.Cl
 
 	return fmt.Errorf("timeout waiting for container to be ready")
 }
-func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Session) (status int64, cleanup func(), err error) {
+func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Session, cmd string) (status int, cleanup func(), err error) {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
@@ -173,6 +168,17 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 
 	cImage := cfg.Image
 	InfoPrint("Image: %s", cImage)
+	defaultCmd := []string{"/bin/sh", "-c", "/bin/bash || /bin/sh"}
+
+	if cmd != "" {
+		defaultCmd = strings.Fields(cmd)
+	}
+
+	if sess.RawCommand() != "" {
+		sess.Write([]byte("not implemented, use -cmd option\n"))
+		return
+	}
+	InfoPrint("Executing command: %s", defaultCmd)
 
 	networkingConfig := network.NetworkingConfig{}
 	platformConfig := v1.Platform{
@@ -217,8 +223,8 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 		return
 	}
 	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
-		Cmd:          []string{"/bin/sh", "-c", "/bin/bash || /bin/sh"},
-		Tty:          true,
+		Cmd:          defaultCmd,
+		Tty:          false,
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -267,8 +273,17 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 			}
 		}()
 	}
+
 	select {
 	case <-outputErr:
+
+		execInspect, ierr := docker.ContainerExecInspect(ctx, execResp.ID)
+		if ierr != nil {
+			WarnPrint("Unable to inspect command exit code: %s", err.Error())
+		}
+		status = execInspect.ExitCode
+		InfoPrint("Exit code from specified command: %d", status)
+
 		cleanup = func() {
 			InfoPrint("Killing container: %s", resp.ID)
 			docker.ContainerKill(ctx, resp.ID, "9")

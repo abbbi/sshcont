@@ -8,6 +8,8 @@ spawn throwaway systemd or non-systemd based docker containers using ssh.
 sshcont:
   -bind string
         bind address, 127.0.0.1:2222, use :2222 for all (default "127.0.0.1:2222")
+  -cmd string
+        Execute cmd after login, example: ls
   -image string
         Force image to be executed
   -vol string
@@ -36,6 +38,24 @@ regular:
 ```
 ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222
 ssh -l "alpine:latest" -o StrictHostKeychecking=no localhost -p 2222
+```
+
+# Executing scripts for CI testing
+
+Currently it is not possible to specify a command for the ssh session, but the
+`cmd` option can be used to execute an specified command within the container
+for CI testing. Example:
+
+```
+ cat /tmp/ci/test.sh
+ #!/bin/bash
+ exit 1
+
+ sshcon -vol /tmp/ci:/ci -cmd /ci/test.sh
+ user@host: ~ $ ssh -l "debian:bookworm" -o StrictHostKeychecking=no localhost -p 2222
+ Connection to localhost closed.
+ user@host: ~ $ echo $?
+ 1
 ```
 
 # Notes:
