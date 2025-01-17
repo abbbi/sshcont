@@ -58,6 +58,15 @@ for CI testing. Example:
  1
 ```
 
+or execute script on multiple containers:
+
+```
+for dist in $(echo "debian:bookworm" "debian:buster" "debian:bullseye"
+"alpine:latest" "registry.suse.com/bci/bci-init:15.6"); do
+    ssh -l "$dist" -o StrictHostKeychecking=no localhost -p 2222;
+done
+```
+
 # Notes:
 
 * No authentication implemented, you should not run this on a public network
