@@ -23,6 +23,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,7 +50,12 @@ func main() {
 	vol := flag.String("vol", "", "Share volume into container, example: /home/:/home_shared")
 	image := flag.String("image", "", "Force image to be executed")
 	cmd := flag.String("cmd", "", "Execute cmd after login, example: ls")
+	exportFolder := flag.String("export", "", "Before removing, export container contents to specified directory, example: /tmp/")
 	flag.Parse()
+
+	if *exportFolder != "" {
+		*exportFolder = filepath.Clean(*exportFolder)
+	}
 
 	ssh.Handle(func(sess ssh.Session) {
 		InfoPrint("Connection from: [%s]", sess.RemoteAddr())
@@ -93,7 +99,7 @@ func main() {
 			CgroupnsMode: "host",
 			SecurityOpt:  []string{"apparmor=unconfined"},
 		}
-		status, cleanup, err := dockerRun(cfg, hostcfg, sess, *cmd)
+		status, cleanup, err := dockerRun(cfg, hostcfg, sess, *cmd, *exportFolder)
 		defer cleanup()
 		if err != nil {
 			fmt.Fprintln(sess, err)
@@ -106,7 +112,11 @@ func main() {
 	log.Fatal(ssh.ListenAndServe(*bindAddress, nil))
 }
 
-func imageExistsLocally(ctx context.Context, imageName string, cli *client.Client) bool {
+func imageExistsLocally(
+	ctx context.Context,
+	imageName string,
+	cli *client.Client,
+) bool {
 	images, err := cli.ImageList(ctx, image.ListOptions{})
 	if err != nil {
 		ErrorPrint("Error listing images: %v", err)
@@ -124,7 +134,13 @@ func imageExistsLocally(ctx context.Context, imageName string, cli *client.Clien
 	return false
 }
 
-func waitForContainerReady(ctx context.Context, sess ssh.Session, cli *client.Client, containerID string, timeout time.Duration) error {
+func waitForContainerReady(
+	ctx context.Context,
+	sess ssh.Session,
+	cli *client.Client,
+	containerID string,
+	timeout time.Duration,
+) error {
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
@@ -156,7 +172,13 @@ func waitForContainerReady(ctx context.Context, sess ssh.Session, cli *client.Cl
 
 	return fmt.Errorf("timeout waiting for container to be ready")
 }
-func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Session, cmd string) (status int, cleanup func(), err error) {
+func dockerRun(
+	cfg *container.Config,
+	hostcfg *container.HostConfig,
+	sess ssh.Session,
+	cmd string,
+	exportFolder string,
+) (status int, cleanup func(), err error) {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
@@ -275,14 +297,26 @@ func dockerRun(cfg *container.Config, hostcfg *container.HostConfig, sess ssh.Se
 
 	select {
 	case <-outputErr:
-
 		execInspect, ierr := docker.ContainerExecInspect(ctx, execResp.ID)
 		if ierr != nil {
 			WarnPrint("Unable to inspect command exit code: %s", err.Error())
 		}
 		status = execInspect.ExitCode
 		InfoPrint("Exit code from specified command: %d", status)
-
+		if exportFolder != "" {
+			InfoPrint("Exporting container to : [%s/%s.tar]", exportFolder, resp.ID)
+			stream, eErr := docker.ContainerExport(ctx, resp.ID)
+			if eErr != nil {
+				WarnPrint("Unable to create export context for container %s: %s", resp.ID, eErr.Error())
+			}
+			targetFile, fErr := os.Create(exportFolder + "/" + resp.ID + ".tar")
+			if fErr != nil {
+				WarnPrint("Unable to create export file for container %s: %s", resp.ID, fErr.Error())
+			}
+			io.Copy(targetFile, stream)
+			targetFile.Close()
+			stream.Close()
+		}
 		cleanup = func() {
 			InfoPrint("Killing container: %s", resp.ID)
 			docker.ContainerKill(ctx, resp.ID, "9")

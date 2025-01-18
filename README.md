@@ -10,6 +10,8 @@ sshcont:
         bind address, 127.0.0.1:2222, use :2222 for all (default "127.0.0.1:2222")
   -cmd string
         Execute cmd after login, example: ls
+  -export string
+        Before removing, export container contents to specified directory, example: /tmp/
   -image string
         Force image to be executed
   -vol string
