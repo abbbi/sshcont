@@ -47,7 +47,7 @@ var (
 func main() {
 	InfoPrint("%s: %s %s %s ", os.Args[0], version, commit, date)
 	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
-	dockerEndpoint := flag.String("endpoint", "", "Docker endpoint, by default local unix socket. Example: tcp://192.168.1.100:2375")
+	dockerEndpoint := flag.String("endpoint", "", "Docker endpoint. Default: use environment settings. Example: tcp://192.168.1.100:2375")
 	vol := flag.String("vol", "", "Share volume into container, example: /home/:/home_shared")
 	image := flag.String("image", "", "Force image to be executed")
 	cmd := flag.String("cmd", "", "Execute cmd after login, example: ls")

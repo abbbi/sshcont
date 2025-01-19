@@ -11,7 +11,7 @@ sshcont:
   -cmd string
         Execute cmd after login, example: ls
   -endpoint string
-        Docker endpoint, by default local unix socket. Example: tcp://192.168.1.100:2375
+        Docker endpoint. Default: use environment settings. Example: tcp://192.168.1.100:2375
   -export string
         Before removing, export container contents to specified directory, example: /tmp/
   -image string
