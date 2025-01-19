@@ -47,6 +47,7 @@ var (
 func main() {
 	InfoPrint("%s: %s %s %s ", os.Args[0], version, commit, date)
 	bindAddress := flag.String("bind", "127.0.0.1:2222", "bind address, 127.0.0.1:2222, use :2222 for all")
+	dockerEndpoint := flag.String("endpoint", "", "Docker endpoint, by default local unix socket. Example: tcp://192.168.1.100:2375")
 	vol := flag.String("vol", "", "Share volume into container, example: /home/:/home_shared")
 	image := flag.String("image", "", "Force image to be executed")
 	cmd := flag.String("cmd", "", "Execute cmd after login, example: ls")
@@ -99,7 +100,14 @@ func main() {
 			CgroupnsMode: "host",
 			SecurityOpt:  []string{"apparmor=unconfined"},
 		}
-		status, cleanup, err := dockerRun(cfg, hostcfg, sess, *cmd, *exportFolder)
+		status, cleanup, err := dockerRun(
+			*dockerEndpoint,
+			cfg,
+			hostcfg,
+			sess,
+			*cmd,
+			*exportFolder,
+		)
 		defer cleanup()
 		if err != nil {
 			sess.Write([]byte("Error executing container: [" + err.Error() + "]\n"))
@@ -173,22 +181,35 @@ func waitForContainerReady(
 	return fmt.Errorf("timeout waiting for container to be ready")
 }
 func dockerRun(
+	endpoint string,
 	cfg *container.Config,
 	hostcfg *container.HostConfig,
 	sess ssh.Session,
 	cmd string,
 	exportFolder string,
 ) (status int, cleanup func(), err error) {
-	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
+	var docker *client.Client
 	status = 255
 	cleanup = func() {}
 	ctx := context.Background()
 	useTty := true
-
 	cImage := cfg.Image
+
+	if endpoint != "" {
+		docker, err = client.NewClientWithOpts(
+			client.WithHost(endpoint),
+			client.WithAPIVersionNegotiation(),
+		)
+	} else {
+		docker, err = client.NewClientWithOpts(
+			client.FromEnv,
+			client.WithAPIVersionNegotiation(),
+		)
+	}
+	if err != nil {
+		panic(err)
+	}
+
 	InfoPrint("Image: %s", cImage)
 	defaultCmd := []string{"/bin/sh", "-c", "[ -e /bin/bash ] && /bin/bash || /bin/sh"}
 
