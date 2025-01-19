@@ -190,7 +190,7 @@ func dockerRun(
 
 	cImage := cfg.Image
 	InfoPrint("Image: %s", cImage)
-	defaultCmd := []string{"/bin/sh", "-c", "/bin/bash || /bin/sh"}
+	defaultCmd := []string{"/bin/sh", "-c", "[ -e /bin/bash ] && /bin/bash || /bin/sh"}
 
 	if sess.RawCommand() != "" {
 		defaultCmd = sess.Command()
