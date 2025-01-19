@@ -10,6 +10,8 @@ sshcont:
         bind address, 127.0.0.1:2222, use :2222 for all (default "127.0.0.1:2222")
   -cmd string
         Execute cmd after login, example: ls
+  -endpoint string
+        Docker endpoint, by default local unix socket. Example: tcp://192.168.1.100:2375
   -export string
         Before removing, export container contents to specified directory, example: /tmp/
   -image string
