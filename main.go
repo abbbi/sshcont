@@ -102,8 +102,8 @@ func main() {
 		status, cleanup, err := dockerRun(cfg, hostcfg, sess, *cmd, *exportFolder)
 		defer cleanup()
 		if err != nil {
-			fmt.Fprintln(sess, err)
-			ErrorPrint(err.Error())
+			sess.Write([]byte("Error executing container: [" + err.Error() + "]\n"))
+			ErrorPrint("Failed to execute: %s", err.Error())
 		}
 		sess.Exit(int(status))
 	})
@@ -233,14 +233,14 @@ func dockerRun(
 	startErr := docker.ContainerStart(ctx, resp.ID, container.StartOptions{})
 	if startErr != nil {
 		ErrorPrint("Unable to start container: %s", startErr)
-		sess.Write([]byte("Unable to pull requested image" + string(startErr.Error()) + "\n"))
+		sess.Write([]byte("Unable to start requested image: [" + string(startErr.Error()) + "]\n"))
 		return
 	}
 	InfoPrint("Wait for container %s to be ready", resp.ID)
 	err = waitForContainerReady(ctx, sess, docker, resp.ID, 30*time.Second)
 	if err != nil {
-		sess.Write([]byte("container failed to become ready"))
-		log.Print("Container failed to become ready:", err)
+		sess.Write([]byte("Container failed to become ready: [" + err.Error() + "]\n"))
+		log.Print("Container failed to become ready: ", err)
 		return
 	}
 	execResp, err := docker.ContainerExecCreate(ctx, resp.ID, container.ExecOptions{
